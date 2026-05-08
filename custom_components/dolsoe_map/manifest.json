@@ -1,12 +1,12 @@
 {
   "domain": "dolsoe_map",
   "name": "Dolsoe Hybrid Map",
-  "documentation": "https://github.com/vvifeel/husqvarna_map/",
+  "version": "1.0.0",  // <--- 이 줄이 반드시 있어야 합니다!
+  "documentation": "https://github.com/wi-pil/dolsoe_map",
   "dependencies": [],
-  "codeowners": ["@vvifeel"],
+  "codeowners": ["@wi-pil"],
   "config_flow": true,
   "integration_type": "helper",
   "iot_class": "local_polling",
-  "requirements": ["Pillow>=9.1.1", "numpy>=1.21.6", "geopy>=2.2.0"],
-  "version": "1.0.0"
+  "requirements": ["Pillow>=9.1.1", "numpy>=1.21.6", "geopy>=2.2.0"]
 }
