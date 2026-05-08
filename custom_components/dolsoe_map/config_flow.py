@@ -1,6 +1,7 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from .const import DOMAIN
+from .const import CONF_MOWER_WIDTH, DEFAULT_MOWER_WIDTH
 
 class DolsoeMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """설정 흐름 관리 (UI 입력창)."""
@@ -20,5 +21,6 @@ class DolsoeMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("top_left", default="35.4755234, 129.2316285"): str,
                 vol.Required("bottom_right", default="35.4751542, 129.2317375"): str,
                 vol.Required("rotation", default=19): int,
+                vol.Optional(CONF_MOWER_WIDTH, default=DEFAULT_MOWER_WIDTH): int,
             })
         )
