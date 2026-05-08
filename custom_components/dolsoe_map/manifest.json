@@ -1,12 +1,12 @@
 {
   "domain": "dolsoe_map",
   "name": "Dolsoe Hybrid Map",
-  "version": "1.0.0",
-  "documentation": "https://github.com/vvifeel/husqvarna_map",
-  "dependencies": [],
-  "codeowners": ["@vvifeel"],
+  "version": "1.0.1",
   "config_flow": true,
-  "integration_type": "helper",
   "iot_class": "local_polling",
-  "requirements": ["Pillow>=9.1.1", "numpy>=1.21.6", "geopy>=2.2.0"]
+  "requirements": [
+    "Pillow>=9.1.1",
+    "numpy>=1.21.6",
+    "geopy>=2.2.0"
+  ]
 }
