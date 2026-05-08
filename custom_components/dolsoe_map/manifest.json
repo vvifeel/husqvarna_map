@@ -1,7 +1,7 @@
 {
   "domain": "dolsoe_map",
   "name": "Dolsoe Hybrid Map",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "config_flow": true,
   "iot_class": "local_polling",
   "requirements": [
