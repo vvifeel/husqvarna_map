@@ -1,1 +1,0 @@
-DOMAIN = "dolsoe_map"
