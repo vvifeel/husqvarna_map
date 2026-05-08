@@ -28,7 +28,8 @@ class DolsoeHybridImage(ImageEntity):
         self._mower_path = entry.data["mower_path"]
         self._top_left = tuple(map(float, entry.data["top_left"].split(",")))
         self._bottom_right = tuple(map(float, entry.data["bottom_right"].split(",")))
-        self._rotation = entry.data["rotation"]
+        # 설정에 값이 없으면 기본값 128을 사용하도록 세팅
+        self._mower_width = entry.data.get("mower_width", 128)
         
         self._pos_history = []
         self._load_images()
@@ -39,10 +40,21 @@ class DolsoeHybridImage(ImageEntity):
         self._center_px = (self._base_map.size[0] // 2, self._base_map.size[1] // 2)
 
     def _load_images(self):
+        """기존 64 제한 코드를 삭제하고 원본 로직으로 교체"""
         self._base_map = Image.open(self._map_path).convert("RGBA")
         self._mower_icon = Image.open(self._mower_path).convert("RGBA")
-        if self._mower_icon.size[0] > 64:
-            self._mower_icon.thumbnail((64, 64), Image.Resampling.LANCZOS)
+        
+        # 설정에서 가져온 너비값 적용
+        mower_img_w = self._mower_width 
+        
+        # 비율 계산 및 고품질 리사이징 (LANCZOS)
+        w_percent = (mower_img_w / float(self._mower_icon.size[0]))
+        target_height = int((float(self._mower_icon.size[1]) * float(w_percent)))
+        
+        self._mower_icon = self._mower_icon.resize(
+            (mower_img_w, target_height), Image.Resampling.LANCZOS
+        )
+        
         self._image = self._base_map.copy()
 
     def _calculate_px_meter(self):
