@@ -3,7 +3,8 @@ import math
 import logging
 from datetime import datetime
 from PIL import Image, ImageDraw
-from geopy.distance import distance, geodesic
+from geographiclib.geodesic import Geodesic
+from geopy.distance import geodesic
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
@@ -22,39 +23,35 @@ class DolsoeHybridImage(ImageEntity):
         self._attr_unique_id = f"{entry.entry_id}_image"
         self._attr_name = f"Dolsoe Hybrid Map ({entry.data['source_entity']})"
         
-        # UI에서 입력받은 설정값들
-        self._source_entity = entry.data["source_entity"] # 새로 추가된 부분
+        self._source_entity = entry.data["source_entity"]
         self._map_path = entry.data["map_path"]
         self._mower_path = entry.data["mower_path"]
         self._top_left = tuple(map(float, entry.data["top_left"].split(",")))
         self._bottom_right = tuple(map(float, entry.data["bottom_right"].split(",")))
-        # 설정에 값이 없으면 기본값 128을 사용하도록 세팅
         self._mower_width = entry.data.get("mower_width", 128)
+        self._rotation = entry.data.get("rotation", 19)  # ✅ 버그① 수정
         
         self._pos_history = []
         self._load_images()
         
-        # [기존 로직 유지] 스케일 및 중심점 계산
         self._px_meter = self._calculate_px_meter()
-        self._center_wgs84 = ((self._top_left[0] + self._bottom_right[0]) / 2, (self._top_left[1] + self._bottom_right[1]) / 2)
+        self._center_wgs84 = (
+            (self._top_left[0] + self._bottom_right[0]) / 2,
+            (self._top_left[1] + self._bottom_right[1]) / 2
+        )
         self._center_px = (self._base_map.size[0] // 2, self._base_map.size[1] // 2)
 
     def _load_images(self):
-        """기존 64 제한 코드를 삭제하고 원본 로직으로 교체"""
         self._base_map = Image.open(self._map_path).convert("RGBA")
         self._mower_icon = Image.open(self._mower_path).convert("RGBA")
         
-        # 설정에서 가져온 너비값 적용
-        mower_img_w = self._mower_width 
-        
-        # 비율 계산 및 고품질 리사이징 (LANCZOS)
-        w_percent = (mower_img_w / float(self._mower_icon.size[0]))
-        target_height = int((float(self._mower_icon.size[1]) * float(w_percent)))
+        mower_img_w = self._mower_width
+        w_percent = mower_img_w / float(self._mower_icon.size[0])
+        target_height = int(self._mower_icon.size[1] * w_percent)
         
         self._mower_icon = self._mower_icon.resize(
             (mower_img_w, target_height), Image.Resampling.LANCZOS
         )
-        
         self._image = self._base_map.copy()
 
     def _calculate_px_meter(self):
@@ -63,17 +60,17 @@ class DolsoeHybridImage(ImageEntity):
         return dist_px / dist_m
 
     async def async_image(self) -> bytes | None:
-        """설정된 엔티티 ID로부터 데이터를 가져와 렌더링"""
-        # 하드코딩 대신 설정값(self._source_entity)을 사용합니다.
         state = self.hass.states.get(self._source_entity)
         
         if state and "latitude" in state.attributes:
-            lat, lon = state.attributes["latitude"], state.attributes["longitude"]
+            lat = state.attributes["latitude"]
+            lon = state.attributes["longitude"]
             new_p = (lat, lon)
             
             if not self._pos_history or self._pos_history[0] != new_p:
                 self._pos_history.insert(0, new_p)
-                if len(self._pos_history) > 1000: self._pos_history.pop()
+                if len(self._pos_history) > 1000:
+                    self._pos_history.pop()
                 self._draw()
         
         img_byte_arr = io.BytesIO()
@@ -81,7 +78,6 @@ class DolsoeHybridImage(ImageEntity):
         return img_byte_arr.getvalue()
 
     def _draw(self):
-        """[기존 로직 유지] 렌더링 함수"""
         new_img = self._base_map.copy()
         draw = ImageDraw.Draw(new_img)
         
@@ -94,16 +90,23 @@ class DolsoeHybridImage(ImageEntity):
         if self._pos_history:
             curr_px = self._scale_to_img(self._pos_history[0])
             m_w, m_h = self._mower_icon.size
-            new_img.paste(self._mower_icon, (curr_px[0] - m_w // 2, curr_px[1] - m_h // 2), self._mower_icon)
+            new_img.paste(
+                self._mower_icon,
+                (curr_px[0] - m_w // 2, curr_px[1] - m_h // 2),
+                self._mower_icon
+            )
 
         self._image = new_img
         self._attr_image_last_updated = datetime.now()
 
     def _scale_to_img(self, lat_lon):
-        """[기존 로직 유지] 좌표 변환 함수"""
-        res = distance(self._center_wgs84, lat_lon).geod.Inverse(self._center_wgs84[0], self._center_wgs84[1], lat_lon[0], lat_lon[1])
-        c_bearing = math.radians(res.get("azi1") - 90 + self._rotation)
-        c_dist_m = res.get("s12") * 1000
+        geod = Geodesic.WGS84  # ✅ 버그② 수정
+        res = geod.Inverse(
+            self._center_wgs84[0], self._center_wgs84[1],
+            lat_lon[0], lat_lon[1]
+        )
+        c_bearing = math.radians(res["azi1"] - 90 + self._rotation)
+        c_dist_m = res["s12"]  # ✅ 버그③ 수정 (이미 meter)
         
         new_x = self._center_px[0] + (c_dist_m * self._px_meter * math.cos(c_bearing))
         new_y = self._center_px[1] + (c_dist_m * self._px_meter * math.sin(c_bearing))
